@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EarnSystem | Official Member Portal</title>
+    <style>
+        :root { --primary: #4f46e5; --success: #22c55e; --danger: #ef4444; --dark: #0f172a; --gray: #f1f5f9; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: var(--dark); margin: 0; line-height: 1.6; }
+        .navbar { background: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .logo { font-weight: 800; font-size: 1.5rem; color: var(--primary); }
+        .container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
+        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 25px; border: 1px solid #e2e8f0; }
+        .hidden { display: none; }
+        
+        /* Inputs & Buttons */
+        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
+        .btn { display: inline-block; width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.3s; font-size: 1rem; text-align: center; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-admin { background: #64748b; color: white; margin-top: 50px; opacity: 0.6; }
+        
+        /* Dashboard Elements */
+        .task-box { background: var(--gray); border-left: 5px solid var(--primary); padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .status-pill { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-paid { background: #dcfce7; color: #166534; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <div class="logo">EarnSystem.</div>
+    <div id="userHeader" style="font-weight: 600;">Guest</div>
+</div>
+
+<div class="container">
+
+    <div id="view-register" class="card">
+        <h2>Member Registration</h2>
+        <p>Subscribe for <strong>$15.00/month</strong> to unlock daily income opportunities. No experience required.</p>
+        <input type="text" id="regName" placeholder="Full Name">
+        <input type="email" id="regEmail" placeholder="Email Address">
+        <button class="btn btn-primary" onclick="handleRegistration()">Subscribe & Start Earning</button>
+        <p style="text-align: center; font-size: 0.8rem; color: #64748b;">Secure payment via PayPal / Stripe</p>
+    </div>
+
+    <div id="view-dashboard" class="card hidden">
+        <h2>Member Dashboard</h2>
+        <p>Welcome back! Generate your daily task below to secure today's payout.</p>
+        
+        <button class="btn btn-success" id="generateBtn" onclick="getTask()">Generate Daily Task</button>
+
+        <div id="taskDisplay" class="task-box hidden">
+            <h3 id="taskTitle" style="margin: 0;"></h3>
+            <p id="taskDesc" style="margin: 10px 0; color: #475569;"></p>
+            <p><strong>Reward: <span id="taskReward" style="color: var(--success);"></span></strong></p>
+            
+            <hr style="border: 0.5px solid #cbd5e1; margin: 20px 0;">
+            
+            <h4>Submit Proof of Work</h4>
+            <input type="file" id="proofUpload" accept="image/*">
+            <textarea id="proofText" placeholder="Paste link or notes here..."></textarea>
+            <button class="btn btn-primary" onclick="submitWork()">Submit Work for Review</button>
+        </div>
+    </div>
+
+    <button class="btn btn-admin" onclick="showAdminAuth()">Open Admin Payout Terminal</button>
+
+    <div id="view-admin-auth" class="card hidden">
+        <h3>🔐 Admin Authentication</h3>
+        <input type="password" id="adminPass" placeholder="Enter System Password">
+        <button class="btn btn-primary" onclick="loginAdmin()">Unlock</button>
+    </div>
+
+    <div id="view-admin-panel" class="card hidden" style="border-top: 5px solid var(--danger);">
+        <h2>Admin Management</h2>
+        <p>Review daily submissions and release payments.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Task</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="adminTable">
+                </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+    // --- APP DATA ---
+    let currentUser = null;
+    let submissions = [];
+    const ADMIN_PASS = "Pass123"; // Change this for your security!
+    const availableTasks = [
+        { title: "Ad Copy Audit", desc: "Check 5 Facebook ads for typos and format.", pay: "$4.00" },
+        { title: "App UI Feedback", desc: "Test the navigation of the 'EcoApp' and write 2 sentences.", pay: "$6.00" },
+        { title: "Product Categorization", desc: "Sort 20 clothing items into 'Summer' or 'Winter' tags.", pay: "$3.50" }
+    ];
+
+    // --- LOGIC ---
+
+    function handleRegistration() {
+        const name = document.getElementById('regName').value;
+        const email = document.getElementById('regEmail').value;
+        if(!name || !email) return alert("Please fill in all fields.");
+
+        // Simulate successful payment
+        currentUser = { name, email };
+        document.getElementById('userHeader').innerText = name;
+        document.getElementById('view-register').classList.add('hidden');
+        document.getElementById('view-dashboard').classList.remove('hidden');
+    }
+
+    function getTask() {
+        const task = availableTasks[Math.floor(Math.random() * availableTasks.length)];
+        document.getElementById('taskTitle').innerText = task.title;
+        document.getElementById('taskDesc').innerText = task.desc;
+        document.getElementById('taskReward').innerText = task.pay;
+        document.getElementById('taskDisplay').classList.remove('hidden');
+        document.getElementById('generateBtn').classList.add('hidden');
+    }
+
+    function submitWork() {
+        const file = document.getElementById('proofUpload').value;
+        if(!file) return alert("Please upload a screenshot or file proof.");
+
+        submissions.push({
+            id: Date.now(),
+            name: currentUser.name,
+            task: document.getElementById('taskTitle').innerText,
+            pay: document.getElementById('taskReward').innerText,
+            status: 'Pending'
+        });
+
+        alert("Work submitted successfully! Admin will review and pay shortly.");
+        document.getElementById('taskDisplay').classList.add('hidden');
+        document.getElementById('generateBtn').classList.remove('hidden');
+    }
+
+    // --- ADMIN LOGIC ---
+
+    function showAdminAuth() {
+        document.getElementById('view-admin-auth').classList.toggle('hidden');
+    }
+
+    function loginAdmin() {
+        if(document.getElementById('adminPass').value === ADMIN_PASS) {
+            document.getElementById('view-admin-auth').classList.add('hidden');
+            document.getElementById('view-admin-panel').classList.remove('hidden');
+            renderAdminTable();
+        } else {
+            alert("Wrong password!");
+        }
+    }
+
+    function renderAdminTable() {
+        const tbody = document.getElementById('adminTable');
+        tbody.innerHTML = submissions.map(sub => `
+            <tr>
+                <td>${sub.name}</td>
+                <td>${sub.task} (${sub.pay})</td>
+                <td><span class="status-pill ${sub.status === 'Paid' ? 'status-paid' : 'status-pending'}">${sub.status}</span></td>
+                <td>
+                    ${sub.status === 'Pending' ? 
+                    `<button onclick="releasePayment(${sub.id})" style="background:var(--success); color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Pay Employee</button>` 
+                    : '✅ Funds Sent'}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function releasePayment(id) {
+        const sub = submissions.find(s => s.id === id);
+        sub.status = 'Paid';
+        alert(`Payment of ${sub.pay} sent to ${sub.name}!`);
+        renderAdminTable();
+    }
+</script>
+
+</body>
+</html>
