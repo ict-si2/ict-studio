@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-User Fleet Management System</title>
+    <!-- Open Graph Meta Tags for Social Sharing -->
+    <meta property="og:title" content="ICT Automotive Showroom Portal">
+    <meta property="og:description" content="Browse our premium vehicle listings">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
     <style>
         :root {
             --primary: #0f172a;
@@ -14,6 +19,9 @@
             --card-bg: #ffffff;
             --text: #334155;
             --border: #e2e8f0;
+            --facebook: #1877f2;
+            --linkedin: #0a66c2;
+            --instagram: #e4405f;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
@@ -81,7 +89,7 @@
         .badge-owner { background: var(--accent); }
         .badge-other { background: #64748b; }
         .date-badge { display: inline-block; background: #f1f5f9; color: #475569; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem; }
-        .type-badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; margin-right: 0.5rem; }
+        .type-badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; margin-right: 0.25rem; }
 
         .car-details { padding: 1rem; flex-grow: 1; display: flex; flex-direction: column; }
         .car-title { font-size: 1.15rem; font-weight: 700; color: var(--primary); margin-bottom: 0.25rem; }
@@ -99,6 +107,16 @@
         .btn-call-link { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
         .btn-whatsapp-link { background: #e8fbf0; border: 1px solid #a3e635; color: #15803d; border-color: #25d366; }
 
+        /* Social Media Sharing Buttons */
+        .social-share-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.4rem; margin: 0.75rem 0; }
+        .share-btn { display: flex; align-items: center; justify-content: center; gap: 0.3rem; padding: 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; color: white; }
+        .share-facebook { background: var(--facebook); }
+        .share-facebook:hover { background: #1664d4; transform: translateY(-2px); }
+        .share-linkedin { background: var(--linkedin); }
+        .share-linkedin:hover { background: #055195; transform: translateY(-2px); }
+        .share-instagram { background: var(--instagram); }
+        .share-instagram:hover { background: #d63d7f; transform: translateY(-2px); }
+
         .card-actions { display: flex; gap: 0.5rem; margin-top: auto; padding-top: 0.75rem; border-top: 1px solid #f1f5f9; }
         .btn-edit { background: #f1f5f9; color: var(--primary); flex: 1; padding: 0.5rem; font-size: 0.85rem; }
         .btn-delete { background: #fee2e2; color: var(--danger); flex: 1; padding: 0.5rem; font-size: 0.85rem; }
@@ -107,6 +125,17 @@
         button:disabled { opacity: 0.4; cursor: not-allowed; }
         
         #hidden-import-file { display: none; }
+
+        /* Share Modal */
+        .share-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .share-modal.active { display: flex; }
+        .share-modal-content { background: white; border-radius: 8px; padding: 1.5rem; max-width: 500px; width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .share-modal-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; color: var(--primary); }
+        .share-modal-close { float: right; font-size: 1.5rem; cursor: pointer; color: #999; }
+        .share-modal-close:hover { color: var(--primary); }
+        .share-links { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
+        .share-link { padding: 1rem; border-radius: 6px; text-align: center; text-decoration: none; font-weight: 700; color: white; transition: all 0.2s; }
+        .share-link:hover { transform: translateY(-3px); }
     </style>
 </head>
 <body>
@@ -238,12 +267,22 @@
     </div>
 </div>
 
+<!-- Share Modal -->
+<div id="share-modal" class="share-modal">
+    <div class="share-modal-content">
+        <span class="share-modal-close" onclick="closeShareModal()">&times;</span>
+        <div class="share-modal-header">Share Vehicle</div>
+        <div class="share-links" id="share-links"></div>
+    </div>
+</div>
+
 <input type="file" id="hidden-import-file" accept=".json">
 
 <script>
     let inventory = [];
     let uploadedImagesArray = []; 
     let activeUser = document.getElementById('current-user').value;
+    let currentShareVehicle = null;
 
     const form = document.getElementById('vehicle-form');
     const imagesInput = document.getElementById('images');
@@ -253,6 +292,7 @@
     const submitBtn = document.getElementById('submit-btn');
     const cancelBtn = document.getElementById('cancel-btn');
     const userSelect = document.getElementById('current-user');
+    const shareModal = document.getElementById('share-modal');
 
     // Load from localStorage if available
     function loadData() {
@@ -464,6 +504,55 @@
         element.classList.add('active');
     };
 
+    // Social Media Sharing Functions
+    window.openShareModal = function(carId) {
+        const car = inventory.find(item => item.id === carId);
+        if (!car) return;
+        currentShareVehicle = car;
+        
+        const shareText = `${car.yom} ${car.brand} ${car.title} - $${Number(car.price).toLocaleString()} - ICT Automotive Showroom`;
+        const carImage = car.images && car.images.length > 0 ? car.images[0] : '';
+        
+        // Generate share links
+        const facebookShare = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(shareText)}`;
+        const linkedinShare = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`;
+        const instagramText = `Check out this amazing ${car.yom} ${car.brand} ${car.title} - $${Number(car.price).toLocaleString()} at ICT Automotive Showroom!`;
+        
+        const shareLinksHtml = `
+            <a href="${facebookShare}" target="_blank" class="share-link share-facebook">
+                📘 Facebook
+            </a>
+            <a href="${linkedinShare}" target="_blank" class="share-link share-linkedin">
+                💼 LinkedIn
+            </a>
+            <button onclick="copyToClipboard('${instagramText.replace(/'/g, "\\'")}')" class="share-link share-instagram">
+                📷 Instagram
+            </button>
+        `;
+        
+        document.getElementById('share-links').innerHTML = shareLinksHtml;
+        shareModal.classList.add('active');
+    };
+
+    window.closeShareModal = function() {
+        shareModal.classList.remove('active');
+    };
+
+    window.copyToClipboard = function(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Text copied! Paste it on Instagram with your image.');
+        }).catch(() => {
+            alert('Could not copy text. Please try again.');
+        });
+    };
+
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        if (event.target === shareModal) {
+            closeShareModal();
+        }
+    });
+
     function renderInventory() {
         displayGrid.innerHTML = '';
         
@@ -532,7 +621,14 @@
                         </a>
                     </div>
 
-                    ${car.specifications ? `<div style="background: #f8fafc; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; border-left: 3px solid #cbd5e1; margin-top: 0.25rem; margin-bottom: 0.5rem;"><strong>Specs:</strong> ${escapeHTML(car.specifications)}</div>` : ''}
+                    <!-- Social Media Share Buttons -->
+                    <div class="social-share-container">
+                        <button class="share-btn share-facebook" onclick="openShareModal('${car.id}')">📘 Share</button>
+                        <button class="share-btn share-linkedin" onclick="openShareModal('${car.id}')">💼 Share</button>
+                        <button class="share-btn share-instagram" onclick="openShareModal('${car.id}')">📷 Share</button>
+                    </div>
+
+                    ${car.specifications ? `<div style="background: #f8fafc; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; border-left: 3px solid #cbd5e1; margin-top: 0.25rem; margin-bottom: 0.5rem;"><strong>Options:</strong> ${escapeHTML(car.specifications)}</div>` : ''}
                     
                     <div class="card-actions">
                         <button class="btn-edit" ${isOwner ? '' : 'disabled'} onclick="editVehicle('${car.id}')">Edit</button>
