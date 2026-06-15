@@ -38,6 +38,12 @@
         .user-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%; }
         @media (min-width: 600px) { .user-controls { width: auto; } }
         .user-select { padding: 0.4rem 1rem; border-radius: 4px; border: none; font-weight: 600; background: white; color: var(--primary); flex-grow: 1; }
+        
+        .data-controls { display: flex; gap: 0.5rem; }
+        .btn-data { padding: 0.4rem 0.8rem; border-radius: 4px; border: none; font-size: 0.8rem; font-weight: 600; cursor: pointer; background: #34d399; color: white; }
+        .btn-data:hover { background: #10b981; }
+        .btn-data.import { background: #f59e0b; }
+        .btn-data.import:hover { background: #d97706; }
 
         .main-layout { display: grid; grid-template-columns: 1fr; gap: 1rem; }
         @media (min-width: 1000px) { .main-layout { grid-template-columns: 400px 1fr; gap: 1.5rem; } }
@@ -75,7 +81,7 @@
         .badge-owner { background: var(--accent); }
         .badge-other { background: #64748b; }
         .date-badge { display: inline-block; background: #f1f5f9; color: #475569; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem; }
-        .type-badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; margin-right: 0.25rem; text-transform: uppercase; }
+        .type-badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; margin-right: 0.5rem; }
 
         .car-details { padding: 1rem; flex-grow: 1; display: flex; flex-direction: column; }
         .car-title { font-size: 1.15rem; font-weight: 700; color: var(--primary); margin-bottom: 0.25rem; }
@@ -89,7 +95,7 @@
         
         /* Direct Communications Interconnect */
         .contact-container { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0; }
-        .contact-btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem; border-radius: 6px; font-size: 0.9rem; font-weight: 700; text-decoration: none; text-align: center; }
+        .contact-btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem; border-radius: 6px; font-size: 0.9rem; font-weight: 700; text-decoration: none; transition: all 0.2s; }
         .btn-call-link { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
         .btn-whatsapp-link { background: #e8fbf0; border: 1px solid #a3e635; color: #15803d; border-color: #25d366; }
 
@@ -99,6 +105,8 @@
         
         .upload-status { font-size: 0.8rem; font-weight: 600; margin-top: 0.25rem; color: var(--accent); display: none; }
         button:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        #hidden-import-file { display: none; }
     </style>
 </head>
 <body>
@@ -115,6 +123,10 @@
                 <option value="Agent_Bravo">Agent Bravo</option>
                 <option value="Manager_Central">Manager Central</option>
             </select>
+            <div class="data-controls">
+                <button class="btn-data" onclick="exportData()">📥 Export</button>
+                <button class="btn-data import" onclick="importData()">📤 Import</button>
+            </div>
         </div>
     </header>
 
@@ -226,8 +238,10 @@
     </div>
 </div>
 
+<input type="file" id="hidden-import-file" accept=".json">
+
 <script>
-    let inventory = JSON.parse(localStorage.getItem('mobile_fleet_v6')) || [];
+    let inventory = [];
     let uploadedImagesArray = []; 
     let activeUser = document.getElementById('current-user').value;
 
@@ -239,6 +253,68 @@
     const submitBtn = document.getElementById('submit-btn');
     const cancelBtn = document.getElementById('cancel-btn');
     const userSelect = document.getElementById('current-user');
+
+    // Load from localStorage if available
+    function loadData() {
+        try {
+            const stored = localStorage.getItem('mobile_fleet_v6');
+            if (stored) {
+                inventory = JSON.parse(stored);
+            }
+        } catch (e) {
+            console.log('localStorage not available (offline mode)');
+        }
+    }
+
+    // Save to localStorage if available
+    function saveToStorage() {
+        try {
+            localStorage.setItem('mobile_fleet_v6', JSON.stringify(inventory));
+        } catch (e) {
+            console.log('Storage full or unavailable');
+        }
+    }
+
+    // Export data as JSON file
+    window.exportData = function() {
+        const dataStr = JSON.stringify(inventory, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `fleet-data-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        alert('Data exported successfully! Share this file via WhatsApp.');
+    };
+
+    // Import data from JSON file
+    window.importData = function() {
+        document.getElementById('hidden-import-file').click();
+    };
+
+    document.getElementById('hidden-import-file').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                if (Array.isArray(importedData)) {
+                    inventory = importedData;
+                    saveToStorage();
+                    renderInventory();
+                    alert(`Successfully imported ${inventory.length} vehicle(s)!`);
+                } else {
+                    alert('Invalid file format. Please use an exported fleet data file.');
+                }
+            } catch (error) {
+                alert('Error reading file: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+    });
 
     userSelect.addEventListener('change', function(e) {
         activeUser = e.target.value;
@@ -392,7 +468,7 @@
         displayGrid.innerHTML = '';
         
         if (inventory.length === 0) {
-            displayGrid.innerHTML = '<div class="no-img" style="grid-column: 1/-1; padding: 3rem; text-align:center;">No vehicle assets currently found inside local storage profiles.</div>';
+            displayGrid.innerHTML = '<div class="no-img" style="grid-column: 1/-1; padding: 3rem; text-align:center;">No vehicle assets currently found. Click "Import" to load data or add new vehicles.</div>';
             return;
         }
 
@@ -456,7 +532,7 @@
                         </a>
                     </div>
 
-                    ${car.specifications ? `<div style="background: #f8fafc; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; border-left: 3px solid #cbd5e1; margin-top: 0.25rem; margin-bottom:1rem;">${escapeHTML(car.specifications)}</div>` : ''}
+                    ${car.specifications ? `<div style="background: #f8fafc; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; border-left: 3px solid #cbd5e1; margin-top: 0.25rem; margin-bottom: 0.5rem;"><strong>Specs:</strong> ${escapeHTML(car.specifications)}</div>` : ''}
                     
                     <div class="card-actions">
                         <button class="btn-edit" ${isOwner ? '' : 'disabled'} onclick="editVehicle('${car.id}')">Edit</button>
@@ -520,11 +596,7 @@
     }
 
     function saveAndRefresh() {
-        try {
-            localStorage.setItem('mobile_fleet_v6', JSON.stringify(inventory));
-        } catch (e) {
-            alert("Storage full. Mobile database space limits exceeded. Try lowering image file sizes.");
-        }
+        saveToStorage();
         renderInventory();
     }
 
@@ -534,6 +606,8 @@
         return String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
     }
 
+    // Load data on page start
+    loadData();
     renderInventory();
 </script>
 </body>
