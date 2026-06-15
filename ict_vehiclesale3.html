@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-User Fleet Management System</title>
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #2563eb;
+            --whatsapp: #25d366;
+            --danger: #ef4444;
+            --bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --text: #334155;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 0.75rem; }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        /* Top Session Bar optimized for mobile viewports */
+        .top-bar { 
+            background: var(--primary); 
+            color: white; 
+            padding: 1rem; 
+            border-radius: 8px; 
+            margin-bottom: 1rem; 
+            display: flex; 
+            flex-direction: column;
+            gap: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        @media (min-width: 600px) {
+            .top-bar { flex-direction: row; justify-content: space-between; align-items: center; }
+        }
+        .user-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%; }
+        @media (min-width: 600px) { .user-controls { width: auto; } }
+        .user-select { padding: 0.4rem 1rem; border-radius: 4px; border: none; font-weight: 600; background: white; color: var(--primary); flex-grow: 1; }
+
+        .main-layout { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+        @media (min-width: 1000px) { .main-layout { grid-template-columns: 400px 1fr; gap: 1.5rem; } }
+
+        /* Form Controls */
+        .form-card { background: var(--card-bg); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); height: fit-content; }
+        @media (min-width: 1000px) { .form-card { position: sticky; top: 1.5rem; } }
+        .form-card h2 { margin-bottom: 1rem; font-size: 1.2rem; color: var(--primary); }
+        .form-group { margin-bottom: 1rem; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+        label { display: block; margin-bottom: 0.25rem; font-weight: 600; font-size: 0.85rem; color: #475569; }
+        input, select, textarea { width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.95rem; background: #fff; -webkit-appearance: none; }
+        textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+        
+        button { cursor: pointer; border: none; border-radius: 4px; font-weight: 600; padding: 0.6rem 1rem; transition: all 0.2s; }
+        .btn-primary { background: var(--accent); color: white; width: 100%; padding: 0.75rem; font-size: 1rem; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-cancel { background: #e2e8f0; color: var(--primary); width: 100%; margin-top: 0.5rem; }
+        
+        /* Grid Showroom Layout */
+        .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+        .car-card { background: var(--card-bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); display: flex; flex-direction: column; position: relative; }
+        
+        /* Image Viewer Component with Touch Optimizations */
+        .car-img-container { width: 100%; height: 210px; background: #e2e8f0; position: relative; }
+        .car-img { width: 100%; height: 100%; object-fit: cover; }
+        .no-img { display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8; font-size: 0.85rem; background: #f8fafc; }
+        
+        .gallery-thumbs { display: flex; gap: 6px; padding: 6px; background: #f1f5f9; border-bottom: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .thumb-img { width: 55px; height: 42px; object-fit: cover; border-radius: 4px; border: 2px solid #cbd5e1; cursor: pointer; flex-shrink: 0; }
+        .thumb-img.active { border-color: var(--accent); }
+
+        /* Status Indicators */
+        .badge { position: absolute; top: 0.75rem; right: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: white; z-index: 10; }
+        .badge-owner { background: var(--accent); }
+        .badge-other { background: #64748b; }
+        .date-badge { display: inline-block; background: #f1f5f9; color: #475569; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .type-badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; margin-right: 0.25rem; text-transform: uppercase; }
+
+        .car-details { padding: 1rem; flex-grow: 1; display: flex; flex-direction: column; }
+        .car-title { font-size: 1.15rem; font-weight: 700; color: var(--primary); margin-bottom: 0.25rem; }
+        .car-price { font-size: 1.3rem; font-weight: 800; color: var(--accent); margin-bottom: 0.5rem; }
+        
+        /* Data Matrices */
+        .specs-table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.85rem; }
+        .specs-table td { padding: 0.4rem 0; border-bottom: 1px solid #f1f5f9; }
+        .specs-table td:first-child { color: #64748b; font-weight: 500; width: 45%; }
+        .specs-table td:last-child { color: var(--primary); font-weight: 600; text-align: right; }
+        
+        /* Direct Communications Interconnect */
+        .contact-container { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0; }
+        .contact-btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.65rem; border-radius: 6px; font-size: 0.9rem; font-weight: 700; text-decoration: none; text-align: center; }
+        .btn-call-link { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+        .btn-whatsapp-link { background: #e8fbf0; border: 1px solid #a3e635; color: #15803d; border-color: #25d366; }
+
+        .card-actions { display: flex; gap: 0.5rem; margin-top: auto; padding-top: 0.75rem; border-top: 1px solid #f1f5f9; }
+        .btn-edit { background: #f1f5f9; color: var(--primary); flex: 1; padding: 0.5rem; font-size: 0.85rem; }
+        .btn-delete { background: #fee2e2; color: var(--danger); flex: 1; padding: 0.5rem; font-size: 0.85rem; }
+        
+        .upload-status { font-size: 0.8rem; font-weight: 600; margin-top: 0.25rem; color: var(--accent); display: none; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="top-bar">
+        <div>
+            <h1 style="font-size: 1.35rem;">ICT Automotive Showroom Portal</h1>
+            <p style="font-size: 0.8rem; color: #94a3b8;">Mobile-Optimized Asynchronous Gallery Processor</p>
+        </div>
+        <div class="user-controls">
+            <select id="current-user" class="user-select">
+                <option value="Agent_Alpha">Agent Alpha</option>
+                <option value="Agent_Bravo">Agent Bravo</option>
+                <option value="Manager_Central">Manager Central</option>
+            </select>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <!-- Entry Form Section -->
+        <div class="form-card">
+            <h2 id="form-title">List New Vehicle</h2>
+            <form id="vehicle-form">
+                <input type="hidden" id="vehicle-id">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="type">Vehicle Type</label>
+                        <select id="type">
+                            <option value="Car">Car</option>
+                            <option value="SUV">SUV</option>
+                            <option value="Van">Van</option>
+                            <option value="Jeep">Jeep</option>
+                            <option value="Cab">Cab</option>
+                            <option value="Bike">Bike</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="yom">YOM (Year)</label>
+                        <input type="number" id="yom" required min="1900" max="2030" placeholder="e.g., 2024">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="brand">Brand</label>
+                        <input type="text" id="brand" required placeholder="e.g., Toyota">
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Model Title</label>
+                        <input type="text" id="title" required placeholder="e.g., Prado">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="price">Price ($)</label>
+                        <input type="number" id="price" required placeholder="Value">
+                    </div>
+                    <div class="form-group">
+                        <label for="mileage">Mileage (km)</label>
+                        <input type="number" id="mileage" required placeholder="Odometer">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="mobile">Call Number</label>
+                        <input type="tel" id="mobile" required placeholder="0771234567">
+                    </div>
+                    <div class="form-group">
+                        <label for="whatsapp">WhatsApp Number</label>
+                        <input type="tel" id="whatsapp" required placeholder="94771234567">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="transmission">Transmission</label>
+                        <select id="transmission">
+                            <option value="Automatic">Automatic</option>
+                            <option value="Manual">Manual</option>
+                            <option value="Tiptronic">Tiptronic</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fuel">Fuel Type</label>
+                        <select id="fuel">
+                            <option value="Petrol">Petrol</option>
+                            <option value="Diesel">Diesel</option>
+                            <option value="Hybrid">Hybrid</option>
+                            <option value="Electric">Electric</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="engine">Engine / Motor Capacity</label>
+                    <input type="text" id="engine" placeholder="e.g., 2500 cc">
+                </div>
+
+                <div class="form-group">
+                    <label for="specifications">Technical Specs & Options</label>
+                    <textarea id="specifications" placeholder="Options overview..."></textarea>
+                </div>
+
+                <!-- Safe Sequential Upload Element -->
+                <div class="form-group">
+                    <label for="images">Vehicle Gallery (Up to 4 Images)</label>
+                    <input type="file" id="images" accept="image/*" multiple>
+                    <div id="upload-status" class="upload-status">Processing files sequentially...</div>
+                </div>
+
+                <button type="submit" class="btn-primary" id="submit-btn">Publish Asset</button>
+                <button type="button" id="cancel-btn" class="btn-cancel" style="display:none;">Cancel Edit</button>
+            </form>
+        </div>
+
+        <!-- Catalog Display Grid -->
+        <div>
+            <h2 style="margin-bottom: 0.75rem; font-size: 1.2rem;">Live Showroom Listings</h2>
+            <div class="inventory-grid" id="inventory-display"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let inventory = JSON.parse(localStorage.getItem('mobile_fleet_v6')) || [];
+    let uploadedImagesArray = []; 
+    let activeUser = document.getElementById('current-user').value;
+
+    const form = document.getElementById('vehicle-form');
+    const imagesInput = document.getElementById('images');
+    const uploadStatus = document.getElementById('upload-status');
+    const displayGrid = document.getElementById('inventory-display');
+    const formTitle = document.getElementById('form-title');
+    const submitBtn = document.getElementById('submit-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const userSelect = document.getElementById('current-user');
+
+    userSelect.addEventListener('change', function(e) {
+        activeUser = e.target.value;
+        renderInventory();
+    });
+
+    // Mobile-Safe Asynchronous Sequential Processing Loop with Canvas Scaling Compression
+    imagesInput.addEventListener('change', async function(e) {
+        uploadedImagesArray = []; 
+        const files = Array.from(e.target.files).slice(0, 4);
+        if (files.length === 0) return;
+
+        submitBtn.disabled = true;
+        uploadStatus.style.display = "block";
+        
+        for (let i = 0; i < files.length; i++) {
+            uploadStatus.textContent = `Downscaling & compressing image (${i + 1}/${files.length})...`;
+            try {
+                const base64Result = await readFileAndCompress(files[i]);
+                uploadedImagesArray.push(base64Result);
+            } catch (error) {
+                console.error("Mobile memory dropped file index:", i, error);
+            }
+        }
+
+        uploadStatus.textContent = `Success: ${uploadedImagesArray.length} assets scaled & verified in showroom queue.`;
+        submitBtn.disabled = false;
+    });
+
+    // Integrated Canvas Compressor to safely respect the 5MB browser localStorage limit
+    function readFileAndCompress(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    // Constrain maximum boundary dimensions to 800px for balanced showroom clarity
+                    const MAX_BOUND = 800;
+                    if (width > height) {
+                        if (width > MAX_BOUND) {
+                            height *= MAX_BOUND / width;
+                            width = MAX_BOUND;
+                        }
+                    } else {
+                        if (height > MAX_BOUND) {
+                            width *= MAX_BOUND / height;
+                            height = MAX_BOUND;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Outputs a highly efficient web-optimized JPEG at 70% quality factor
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.onerror = (err) => reject(err);
+                img.src = event.target.result;
+            };
+            reader.onerror = (err) => reject(err);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById('vehicle-id').value;
+        const type = document.getElementById('type').value;
+        const yom = document.getElementById('yom').value;
+        const brand = document.getElementById('brand').value;
+        const title = document.getElementById('title').value;
+        const price = document.getElementById('price').value;
+        const mileage = document.getElementById('mileage').value;
+        const mobile = document.getElementById('mobile').value;
+        const whatsapp = document.getElementById('whatsapp').value.replace(/[^0-9]/g, ''); 
+        const transmission = document.getElementById('transmission').value;
+        const fuel = document.getElementById('fuel').value;
+        const engine = document.getElementById('engine').value;
+        const specifications = document.getElementById('specifications').value;
+
+        const currentDateStr = new Date().toISOString().split('T')[0];
+
+        if (id) {
+            const targetItem = inventory.find(item => item.id === id);
+            if (!targetItem) return;
+            
+            if ((targetItem.owner || 'Agent_Alpha') !== activeUser) {
+                alert("Security Error: Operator mismatch.");
+                resetForm();
+                return;
+            }
+
+            targetItem.type = type;
+            targetItem.yom = yom;
+            targetItem.brand = brand;
+            targetItem.title = title;
+            targetItem.price = price;
+            targetItem.mileage = mileage;
+            targetItem.mobile = mobile;
+            targetItem.whatsapp = whatsapp;
+            targetItem.transmission = transmission;
+            targetItem.fuel = fuel;
+            targetItem.engine = engine;
+            targetItem.specifications = specifications;
+            targetItem.dateModified = currentDateStr;
+            if (uploadedImagesArray.length > 0) targetItem.images = uploadedImagesArray;
+            
+        } else {
+            const newVehicle = {
+                id: Date.now().toString(),
+                owner: activeUser,
+                type,
+                yom,
+                brand,
+                title,
+                price,
+                mileage,
+                mobile,
+                whatsapp,
+                transmission,
+                fuel,
+                engine,
+                specifications,
+                dateAdded: currentDateStr,
+                images: uploadedImagesArray
+            };
+            inventory.push(newVehicle);
+        }
+
+        saveAndRefresh();
+        resetForm();
+    });
+
+    window.switchCardImage = function(imgSrc, cardId, element) {
+        const mainImg = document.getElementById(`main-img-${cardId}`);
+        if (mainImg) mainImg.src = imgSrc;
+        
+        const siblings = element.parentNode.querySelectorAll('.thumb-img');
+        siblings.forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+    };
+
+    function renderInventory() {
+        displayGrid.innerHTML = '';
+        
+        if (inventory.length === 0) {
+            displayGrid.innerHTML = '<div class="no-img" style="grid-column: 1/-1; padding: 3rem; text-align:center;">No vehicle assets currently found inside local storage profiles.</div>';
+            return;
+        }
+
+        inventory.forEach(car => {
+            const card = document.createElement('div');
+            card.className = 'car-card';
+            
+            const carOwner = car.owner || 'Agent_Alpha';
+            const isOwner = carOwner === activeUser;
+            const badgeClass = isOwner ? 'badge-owner' : 'badge-other';
+            const cleanOwnerName = carOwner.replace(/_/g, ' ');
+            const timelineLabel = car.dateModified ? `Updated: ${car.dateModified}` : `Listed: ${car.dateAdded}`;
+
+            const hasImages = car.images && car.images.length > 0;
+            const primaryImage = hasImages ? car.images[0] : '';
+            
+            let imgHTML = `<div class="no-img">No Image Assets Uploaded</div>`;
+            if (hasImages) {
+                imgHTML = `<img src="${primaryImage}" class="car-img" id="main-img-${car.id}" alt="${escapeHTML(car.title)}">`;
+            }
+
+            let thumbsHTML = '';
+            if (hasImages && car.images.length > 1) {
+                thumbsHTML = `<div class="gallery-thumbs">`;
+                car.images.forEach((imgData, idx) => {
+                    thumbsHTML += `<img src="${imgData}" class="thumb-img ${idx === 0 ? 'active' : ''}" onclick="switchCardImage('${imgData}', '${car.id}', this)">`;
+                });
+                thumbsHTML += `</div>`;
+            }
+
+            const whatsappText = encodeURIComponent(`Hello, I'm checking availability for your vehicle listing: ${car.yom} ${car.brand || ''} ${car.title} found on the Fleet Portal.`);
+
+            card.innerHTML = `
+                <div class="car-img-container">
+                    ${imgHTML}
+                    <span class="badge ${badgeClass}">${cleanOwnerName} ${isOwner ? '(You)' : ''}</span>
+                </div>
+                ${thumbsHTML}
+                <div class="car-details">
+                    <div>
+                        <span class="type-badge">${escapeHTML(car.type || 'Car')}</span>
+                        <span class="date-badge">${timelineLabel}</span>
+                    </div>
+                    <div class="car-title">${escapeHTML(car.yom)} ${escapeHTML(car.brand || '')} ${escapeHTML(car.title)}</div>
+                    <div class="car-price">$${Number(car.price || 0).toLocaleString()}</div>
+                    
+                    <table class="specs-table">
+                        <tr><td>Make:</td><td>${escapeHTML(car.brand || 'N/A')}</td></tr>
+                        <tr><td>Odometer:</td><td>${Number(car.mileage || 0).toLocaleString()} km</td></tr>
+                        <tr><td>Gearbox:</td><td>${escapeHTML(car.transmission)}</td></tr>
+                        <tr><td>Fuel:</td><td>${escapeHTML(car.fuel)}</td></tr>
+                        <tr><td>Engine Size:</td><td>${escapeHTML(car.engine || 'N/A')}</td></tr>
+                    </table>
+
+                    <div class="contact-container">
+                        <a href="tel:${escapeHTML(car.mobile)}" class="contact-btn btn-call-link">
+                            📞 Direct Call: ${escapeHTML(car.mobile)}
+                        </a>
+                        <a href="https://wa.me/${escapeHTML(car.whatsapp)}?text=${whatsappText}" target="_blank" class="contact-btn btn-whatsapp-link">
+                            💬 Chat via WhatsApp
+                        </a>
+                    </div>
+
+                    ${car.specifications ? `<div style="background: #f8fafc; padding: 0.5rem; border-radius: 4px; font-size: 0.8rem; border-left: 3px solid #cbd5e1; margin-top: 0.25rem; margin-bottom:1rem;">${escapeHTML(car.specifications)}</div>` : ''}
+                    
+                    <div class="card-actions">
+                        <button class="btn-edit" ${isOwner ? '' : 'disabled'} onclick="editVehicle('${car.id}')">Edit</button>
+                        <button class="btn-delete" ${isOwner ? '' : 'disabled'} onclick="deleteVehicle('${car.id}')">Delete</button>
+                    </div>
+                </div>
+            `;
+            displayGrid.appendChild(card);
+        });
+    }
+
+    window.editVehicle = function(id) {
+        const car = inventory.find(item => item.id === id);
+        if (!car || (car.owner || 'Agent_Alpha') !== activeUser) return;
+
+        document.getElementById('vehicle-id').value = car.id;
+        document.getElementById('type').value = car.type || 'Car';
+        document.getElementById('yom').value = car.yom || '';
+        document.getElementById('brand').value = car.brand || '';
+        document.getElementById('title').value = car.title;
+        document.getElementById('price').value = car.price;
+        document.getElementById('mileage').value = car.mileage;
+        document.getElementById('mobile').value = car.mobile;
+        document.getElementById('whatsapp').value = car.whatsapp || '';
+        document.getElementById('transmission').value = car.transmission;
+        document.getElementById('fuel').value = car.fuel;
+        document.getElementById('engine').value = car.engine || '';
+        document.getElementById('specifications').value = car.specifications || '';
+        
+        uploadedImagesArray = []; 
+        imagesInput.value = "";
+        uploadStatus.style.display = "none";
+
+        formTitle.textContent = "Modify Asset Attributes";
+        submitBtn.textContent = "Commit Changes";
+        cancelBtn.style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.deleteVehicle = function(id) {
+        const car = inventory.find(item => item.id === id);
+        if (!car || (car.owner || 'Agent_Alpha') !== activeUser) return;
+
+        if (confirm(`Confirm permanent removal of ${car.title}?`)) {
+            inventory = inventory.filter(item => item.id !== id);
+            saveAndRefresh();
+            if (document.getElementById('vehicle-id').value === id) resetForm();
+        }
+    };
+
+    cancelBtn.addEventListener('click', resetForm);
+
+    function resetForm() {
+        form.reset();
+        document.getElementById('vehicle-id').value = "";
+        uploadedImagesArray = [];
+        uploadStatus.style.display = "none";
+        formTitle.textContent = "List New Vehicle";
+        submitBtn.textContent = "Publish Asset";
+        cancelBtn.style.display = "none";
+    }
+
+    function saveAndRefresh() {
+        try {
+            localStorage.setItem('mobile_fleet_v6', JSON.stringify(inventory));
+        } catch (e) {
+            alert("Storage full. Mobile database space limits exceeded. Try lowering image file sizes.");
+        }
+        renderInventory();
+    }
+
+    // Force values into Strings to prevent type crashes from unhandled numerical values
+    function escapeHTML(str) {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
+    }
+
+    renderInventory();
+</script>
+</body>
+</html>
